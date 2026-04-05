@@ -3,7 +3,8 @@
 import sys
 import time
 import json
-sys.path.insert(0, 'd:/Invoice_Intellitrace/backend')
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
 
 from main import app
 from fastapi.testclient import TestClient

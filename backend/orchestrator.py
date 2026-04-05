@@ -141,8 +141,8 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
                     all_edges = list(set(obligation_edges + db_edges))
                     fraud_rings = detect_fraud_rings(all_edges)
                     
-                    # Add invoice to graph for future detection
-                    gb.add_invoice_to_graph(invoice)
+                # Add invoice to graph for future detection
+                gb.add_invoice_to_graph(invoice)
         except Exception:
             pass
         

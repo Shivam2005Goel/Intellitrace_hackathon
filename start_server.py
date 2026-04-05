@@ -6,7 +6,7 @@ import subprocess
 import time
 
 def main():
-    os.chdir(r'd:\Invoice_Intellitrace\backend')
+    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
     print("=" * 60)
     print("Starting Invoice Physics API Server...")
     print("=" * 60)

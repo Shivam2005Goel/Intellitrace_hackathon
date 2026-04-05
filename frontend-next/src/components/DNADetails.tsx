@@ -155,7 +155,7 @@ export default function DNADetails({ dna }: DNADetailsProps) {
             <div className={`font-semibold ${
               dna.psi.flagged ? 'text-danger' : 'text-success'
             }`}>
-              {dna.psi.status}
+              {dna.psi.verdict || (dna.psi.flagged ? 'Flagged' : 'Clear')}
             </div>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function DNADetails({ dna }: DNADetailsProps) {
         
         <div className="mt-3 p-3 bg-slate-50 rounded-lg flex items-center gap-2">
           <Shield className="w-4 h-4 text-slate-400" />
-          <span className="text-xs text-slate-500">{dna.psi.privacy_note}</span>
+          <span className="text-xs text-slate-500">{"PSI data is anonymized and encrypted"}</span>
         </div>
       </motion.div>
     </div>
