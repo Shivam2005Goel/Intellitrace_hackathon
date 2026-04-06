@@ -80,14 +80,21 @@ def check_temporal_causality(events: Dict[str, Any]) -> Dict[str, Any]:
             violations.append("Invoice date is BEFORE Purchase Order date — temporal paradox")
             paradox_score += 3
     
-    # Rule 5: Payment must come after invoice/finance
+    # Rule 5: Payment must come after invoice/finance (Inverse Causality - Phantom Backward)
     if "payment_date" in dates:
         if "invoice_date" in dates and dates["payment_date"] < dates["invoice_date"]:
-            violations.append("Payment made BEFORE invoice issued")
-            paradox_score += 3
+            violations.append("Payment made BEFORE invoice issued (Phantom Backward)")
+            paradox_score += 4
         if "finance_request_date" in dates and dates["payment_date"] < dates["finance_request_date"]:
-            violations.append("Payment made BEFORE finance requested")
-            paradox_score += 2
+            violations.append("Payment made BEFORE finance requested (Phantom Backward)")
+            paradox_score += 3
+        # Check payment vs PO/GRN for Inverse Causality "Phantom-Backward" chain
+        if "po_date" in dates and dates["payment_date"] < dates["po_date"]:
+            violations.append("Payment made BEFORE Purchase Order (Phantom Backward Inverse Causality)")
+            paradox_score += 5
+        if "grn_date" in dates and dates["payment_date"] < dates["grn_date"]:
+            violations.append("Payment made BEFORE Goods Receipt (Phantom Backward Inverse Causality)")
+            paradox_score += 4
     
     # Rule 6: Delivery date must be after GRN
     if "delivery_date" in dates and "grn_date" in dates:

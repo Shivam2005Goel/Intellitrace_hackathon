@@ -42,6 +42,11 @@ class InvoiceRequest(BaseModel):
     claimed_days: float = Field(..., gt=0)
     quantity: float = Field(..., ge=0)
     dates: Dict[str, Optional[str]] = Field(default_factory=dict)
+    lender_id: Optional[str] = Field(default="bank_main")
+    po_text: Optional[str] = None
+    grn_text: Optional[str] = None
+    bol_text: Optional[str] = None
+    invoice_text: Optional[str] = None
     obligation_edges: Optional[List[tuple]] = Field(default_factory=list)
     industry: Optional[str] = None
 

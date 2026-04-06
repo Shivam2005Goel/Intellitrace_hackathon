@@ -7,22 +7,29 @@ from datetime import datetime
 # Layer 1: DNA
 from layer1_dna.fingerprint import get_sha256_fingerprint, get_minhash_signature
 from layer1_dna.registry import register_invoice
-from layer1_dna.behavioral import score_submission_behavior
+from layer1_dna.behavioral import score_submission_behavior, score_trust_decay, score_resonance
 
 # Layer 2: Physics
 from layer2_physics.routing import check_delivery_feasibility
 from layer2_physics.capacity import check_supplier_capacity
 from layer2_physics.causality_dag import check_temporal_causality
+from layer2_physics.market_physics import analyze_market_physics
 
 # Layer 3: Graph
 from layer3_graph.cycle_detector import detect_fraud_rings, detect_communities
 from layer3_graph.graph_builder import get_graph_builder
+from layer3_graph.graph_features import detect_tier_shifting, detect_shadow_tier, detect_cash_rebound
 
 # Layer 4: LLM
 from layer4_llm.explainer import generate_explanation, generate_decision_summary
+from layer4_llm.document_embedder import check_semantic_consistency
 
 # Layer 5: PSI
 from layer5_psi.psi_engine import detect_cross_lender_rings
+from layer5_psi.exposure import compute_cascade_exposure
+
+# Classifier
+from classifier import classify_fraud_persona
 
 
 async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
@@ -40,8 +47,13 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
         minhash = get_minhash_signature(invoice)
         
         dna_result = register_invoice(invoice["id"], sha256, minhash)
-        behavioral = score_submission_behavior(invoice.get("supplier_id", "unknown"), time.time())
-        psi_result = detect_cross_lender_rings(sha256, requesting_lender="bank_main")
+        behavioral = score_submission_behavior(invoice.get("supplier_id", "unknown"), start_time)
+        trust = score_trust_decay(invoice.get("supplier_id", "unknown"), behavioral.get("anomaly_score", 0))
+        resonance = score_resonance(invoice.get("supplier_id", "unknown"))
+        psi_result = detect_cross_lender_rings(sha256, requesting_lender=invoice.get("lender_id", "bank_main"))
+        
+        behavioral.update(trust)
+        behavioral.update(resonance)
         
         results["dna"] = {
             "fingerprint": sha256[:16] + "...",
@@ -95,10 +107,13 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
             dates = dates.dict()
         causality = check_temporal_causality(dates)
         
+        market = analyze_market_physics(invoice)
+        
         results["physics"] = {
             "routing": routing,
             "capacity": capacity,
-            "causality": causality
+            "causality": causality,
+            "market_physics": market
         }
         
         # Calculate Physics score
@@ -120,6 +135,11 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
             physics_score += paradox * 2
             if "PHYSICS" not in all_flagged:
                 all_flagged.append("PHYSICS")
+                
+        if market.get("flagged"):
+            physics_score += market.get("market_physics_score", 0)
+            if "PHYSICS" not in all_flagged:
+                all_flagged.append("PHYSICS")
         
         layer_scores["physics"] = min(physics_score, 10)
         
@@ -133,6 +153,10 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
         fraud_rings = detect_fraud_rings(obligation_edges)
         
         # Try to get edges from graph database
+        tier_shifting = {}
+        shadow_tier = {}
+        cash_rebound = {}
+        
         try:
             gb = get_graph_builder()
             if gb.is_connected():
@@ -143,6 +167,10 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
                     
                 # Add invoice to graph for future detection
                 gb.add_invoice_to_graph(invoice)
+                
+                tier_shifting = detect_tier_shifting(gb, invoice)
+                shadow_tier = detect_shadow_tier(gb, invoice)
+                cash_rebound = detect_cash_rebound(gb, invoice)
         except Exception:
             pass
         
@@ -151,7 +179,10 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
         
         results["graph"] = {
             **fraud_rings,
-            "communities": communities
+            "communities": communities,
+            "tier_shifting": tier_shifting,
+            "shadow_tier": shadow_tier,
+            "cash_rebound": cash_rebound
         }
         
         # Calculate Graph score
@@ -166,15 +197,33 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
             graph_score += 3
             if "GRAPH" not in all_flagged:
                 all_flagged.append("GRAPH")
+                
+        if tier_shifting.get("flagged"):
+            graph_score += tier_shifting.get("tier_shifting_score", 0)
+        if shadow_tier.get("flagged"):
+            graph_score += shadow_tier.get("shadow_tier_score", 0)
+        if cash_rebound.get("flagged"):
+            graph_score += cash_rebound.get("cash_rebound_score", 0)
+        
+        if any([tier_shifting.get("flagged"), shadow_tier.get("flagged"), cash_rebound.get("flagged")]):
+             if "GRAPH" not in all_flagged:
+                all_flagged.append("GRAPH")
         
         layer_scores["graph"] = min(graph_score, 10)
         
     except Exception as e:
         results["graph"] = {"error": str(e), "flagged": False}
         layer_scores["graph"] = 0
-    
-    # ===== LAYER 4: LLM Explanation =====
+        
+    # ===== LAYER 4: LLM Explanation & Consistency =====
     try:
+        semantic = check_semantic_consistency(invoice)
+        results["consistency"] = semantic
+        
+        if semantic.get("flagged"):
+            if "LLM_CONSISTENCY" not in all_flagged:
+                all_flagged.append("LLM_CONSISTENCY")
+            layer_scores["llm"] = semantic.get("consistency_score", 0)
         violations_for_llm = {
             "dna": results.get("dna", {}),
             "behavioral": results.get("dna", {}).get("behavioral", {}),
@@ -190,8 +239,13 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Explanation generation error: {e}")
         results["explanation"] = f"Analysis complete. {len(all_flagged)} layers flagged."
     
-    # ===== LAYER 5: PSI (already done in Layer 1) =====
+    # ===== LAYER 5: PSI =====
     results["psi"] = results.get("dna", {}).get("psi", {})
+    exposure = compute_cascade_exposure(invoice)
+    results["exposure"] = exposure
+    
+    # ===== FEATURE 10: CLASSIFIER =====
+    results["personas"] = classify_fraud_persona(results)
     
     # ===== DECISION ENGINE =====
     total_score = sum(layer_scores.values())

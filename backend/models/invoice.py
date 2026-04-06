@@ -25,6 +25,7 @@ class InvoiceDates(BaseModel):
     finance_request_date: Optional[str] = None
     delivery_date: Optional[str] = None
     payment_date: Optional[str] = None
+    buyer_payment_date: Optional[str] = None
 
 
 class Invoice(BaseModel):
@@ -41,6 +42,11 @@ class Invoice(BaseModel):
     claimed_days: float = Field(..., gt=0, description="Claimed delivery days")
     quantity: float = Field(..., ge=0, description="Quantity in tons")
     dates: InvoiceDates = Field(..., description="Timeline dates")
+    lender_id: Optional[str] = Field(default="bank_main", description="Lender querying the invoice")
+    po_text: Optional[str] = Field(None, description="Purchase Order text for semantic match")
+    grn_text: Optional[str] = Field(None, description="Goods Receipt Note text for semantic match")
+    bol_text: Optional[str] = Field(None, description="Bill of Lading text for semantic match")
+    invoice_text: Optional[str] = Field(None, description="Invoice document text for semantic match")
     obligation_edges: Optional[List[tuple]] = Field(default_factory=list, description="Graph edges for cycle detection")
 
 

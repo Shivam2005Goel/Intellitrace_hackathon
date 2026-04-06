@@ -2,7 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, UploadCloud, FileText } from 'lucide-react';
+import { 
+  LayoutDashboard, UploadCloud, FileText, 
+  ArrowRightLeft, Ghost, RefreshCcw, 
+  History, Store, HeartCrack, Activity, 
+  FileSearch, ShieldAlert, UserX 
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Sidebar() {
@@ -11,6 +16,16 @@ export default function Sidebar() {
   const links = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Upload Invoice', href: '/upload', icon: UploadCloud },
+    { name: 'Tier-Shifting', href: '/tier-shifting', icon: ArrowRightLeft },
+    { name: 'Shadow-Tier', href: '/shadow-tier', icon: Ghost },
+    { name: 'Cash-Rebound', href: '/cash-rebound', icon: RefreshCcw },
+    { name: 'Inverse-Causality', href: '/inverse-causality', icon: History },
+    { name: 'Market-Physics', href: '/market-physics', icon: Store },
+    { name: 'Trust-Decay', href: '/trust-decay', icon: HeartCrack },
+    { name: 'Funding-Frequency', href: '/funding-frequency', icon: Activity },
+    { name: 'Reality-Consistency', href: '/reality-consistency', icon: FileSearch },
+    { name: 'Cascade-Exposure', href: '/cascade-exposure', icon: ShieldAlert },
+    { name: 'Fraud-Persona', href: '/fraud-persona', icon: UserX },
   ];
 
   return (
