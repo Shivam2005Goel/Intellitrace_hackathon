@@ -28,6 +28,9 @@ from layer4_llm.document_embedder import check_semantic_consistency
 from layer5_psi.psi_engine import detect_cross_lender_rings
 from layer5_psi.exposure import compute_cascade_exposure
 
+# Layer 6: SCF Intelligence
+from layer6_scf.intelligence import analyze_scf_intelligence
+
 # Classifier
 from classifier import classify_fraud_persona
 
@@ -38,6 +41,7 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
     results = {}
     all_flagged = []
     layer_scores = {}
+    gb = None
     
     start_time = time.time()
     
@@ -214,12 +218,24 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         results["graph"] = {"error": str(e), "flagged": False}
         layer_scores["graph"] = 0
+
+    # ===== LAYER 6: SCF INTELLIGENCE =====
+    try:
+        scf = analyze_scf_intelligence(invoice, gb)
+        results["scf"] = scf
+        layer_scores["scf"] = min(scf.get("score", 0), 10)
+        if scf.get("flagged") and "SCF" not in all_flagged:
+            all_flagged.append("SCF")
+    except Exception as e:
+        results["scf"] = {"error": str(e), "flagged": False}
+        layer_scores["scf"] = 0
         
     # ===== LAYER 4: LLM Explanation & Consistency =====
     try:
         semantic = check_semantic_consistency(invoice)
         results["consistency"] = semantic
-        
+        layer_scores["llm"] = 0
+
         if semantic.get("flagged"):
             if "LLM_CONSISTENCY" not in all_flagged:
                 all_flagged.append("LLM_CONSISTENCY")
@@ -229,7 +245,8 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
             "behavioral": results.get("dna", {}).get("behavioral", {}),
             "psi": results.get("dna", {}).get("psi", {}),
             "physics": results.get("physics", {}),  # Pass full physics object
-            "graph": results.get("graph", {})
+            "graph": results.get("graph", {}),
+            "scf": results.get("scf", {}),
         }
         
         explanation = generate_explanation(violations_for_llm)
@@ -268,6 +285,13 @@ async def analyze_invoice_async(invoice: Dict[str, Any]) -> Dict[str, Any]:
     if psi_data.get("other_count", 0) >= 3:
         decision = "BLOCK"
     elif psi_data.get("other_count", 0) >= 2 and decision == "APPROVE":
+        decision = "HOLD"
+
+    scf_data = results.get("scf", {})
+    scf_warning = scf_data.get("early_warning", {})
+    if scf_warning.get("recommended_action") == "BLOCK":
+        decision = "BLOCK"
+    elif scf_warning.get("recommended_action") == "HOLD" and decision == "APPROVE":
         decision = "HOLD"
     
     processing_time = round(time.time() - start_time, 3)

@@ -11,8 +11,10 @@ def get_embedding_model():
         try:
             from sentence_transformers import SentenceTransformer
             # Small, fast model
-            _model = SentenceTransformer('all-MiniLM-L6-v2')
+            _model = SentenceTransformer('all-MiniLM-L6-v2', local_files_only=True)
         except ImportError:
+            _model = "MOCK"
+        except Exception:
             _model = "MOCK"
     return _model
 

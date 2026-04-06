@@ -51,6 +51,8 @@ class GraphBuilder:
                 session.run("RETURN 1")
             return True
         except Exception:
+            self._use_memory = True
+            self.driver = None
             return False
     
     def add_invoice_to_graph(self, invoice: Dict[str, Any]) -> bool:
@@ -89,6 +91,8 @@ class GraphBuilder:
             return True
         except Exception as e:
             print(f"Error adding invoice: {e}")
+            self._use_memory = True
+            self.driver = None
             return False
     
     def _calculate_tier(self, amount: float) -> str:
@@ -175,8 +179,9 @@ class GraphBuilder:
                 result = session.run("MATCH (a:Company)-[:SUPPLIES]->(b:Company) RETURN a.id as source, b.id as target")
                 return [(r["source"], r["target"]) for r in result]
         except Exception as e:
-            print(f"Error getting edges: {e}")
-            return []
+            self._use_memory = True
+            self.driver = None
+            return _memory_edges
 
 # Global instance
 _graph_builder = None

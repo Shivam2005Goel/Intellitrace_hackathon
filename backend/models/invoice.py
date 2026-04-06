@@ -48,6 +48,12 @@ class Invoice(BaseModel):
     bol_text: Optional[str] = Field(None, description="Bill of Lading text for semantic match")
     invoice_text: Optional[str] = Field(None, description="Invoice document text for semantic match")
     obligation_edges: Optional[List[tuple]] = Field(default_factory=list, description="Graph edges for cycle detection")
+    tier_level: Optional[int] = Field(default=1, description="Tier of the invoice in the SCF chain")
+    industry: Optional[str] = Field(None, description="Industry context for capacity assumptions")
+    erp_records: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Structured PO/GRN/delivery ERP evidence")
+    related_invoices: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Upstream and downstream invoices in the cascade")
+    cash_flow: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Collections and dilution indicators")
+    supplier_profile: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Revenue and operating profile for feasibility checks")
 
 
 class DNAResult(BaseModel):

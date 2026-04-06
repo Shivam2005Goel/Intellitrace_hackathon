@@ -1,0 +1,173 @@
+"""Demo scenarios for hackathon-grade SCF fraud detection flows."""
+from typing import Dict, Any
+
+
+def get_phantom_cascade_invoice() -> Dict[str, Any]:
+    """High-risk phantom cascade scenario aligned to the challenge brief."""
+    return {
+        "id": "INV-PHANTOM-340",
+        "supplier": "Shanghai Steel Co",
+        "supplier_id": "shanghai_steel",
+        "buyer": "Rotterdam Imports",
+        "buyer_id": "rotterdam_imports",
+        "amount": 4_700_000,
+        "items": ["steel_coils", "steel_plates"],
+        "origin": "shanghai",
+        "destination": "rotterdam",
+        "transport_mode": "sea",
+        "claimed_days": 2,
+        "quantity": 6_400,
+        "tier_level": 1,
+        "industry": "steel",
+        "lender_id": "bank_main",
+        "dates": {
+            "po_date": "2024-01-10",
+            "grn_date": "2024-01-18",
+            "invoice_date": "2024-01-06",
+            "finance_request_date": "2024-01-05",
+            "delivery_date": "2024-01-19",
+        },
+        "erp_records": {
+            "po": {
+                "id": "PO-88214",
+                "supplier_id": "shanghai_steel",
+                "buyer_id": "rotterdam_imports",
+                "amount": 4_250_000,
+                "quantity": 5_700,
+                "items": ["steel_coils"],
+                "date": "2024-01-10",
+            },
+            "grn": {
+                "id": "GRN-4402",
+                "quantity": 920,
+                "date": "2024-01-18",
+            },
+            "delivery": {
+                "id": "POD-9912",
+                "quantity": 750,
+                "status": "partial",
+                "date": "2024-01-19",
+            },
+        },
+        "cash_flow": {
+            "expected_amount": 4_700_000,
+            "collected_amount": 1_180_000,
+            "overdue_days": 67,
+            "returns_ratio": 0.12,
+            "credit_notes_ratio": 0.09,
+        },
+        "supplier_profile": {
+            "annual_revenue": 38_000_000,
+            "monthly_revenue": 5_400_000,
+            "current_month_financed_volume": 12_800_000,
+            "employee_count": 14,
+            "facility_count": 1,
+        },
+        "related_invoices": [
+            {
+                "id": "INV-T3-118",
+                "tier_level": 3,
+                "supplier_id": "ore_mines_t3",
+                "buyer_id": "metal_processors_t2",
+                "amount": 4_550_000,
+                "finance_request_date": "2024-01-11",
+                "invoice_date": "2024-01-10",
+                "lender_id": "bank_alt_1",
+            },
+            {
+                "id": "INV-T2-224",
+                "tier_level": 2,
+                "supplier_id": "metal_processors_t2",
+                "buyer_id": "shanghai_steel",
+                "amount": 4_630_000,
+                "finance_request_date": "2024-01-12",
+                "invoice_date": "2024-01-11",
+                "lender_id": "bank_alt_2",
+            },
+        ],
+        "obligation_edges": [
+            ("ore_mines_t3", "metal_processors_t2"),
+            ("metal_processors_t2", "shanghai_steel"),
+            ("shanghai_steel", "rotterdam_imports"),
+            ("rotterdam_imports", "trade_broker_x"),
+            ("trade_broker_x", "ore_mines_t3"),
+            ("shanghai_steel", "trade_broker_x"),
+            ("trade_broker_x", "metal_processors_t2"),
+        ],
+        "po_text": "Purchase order for 5700 tons of steel coils from Shanghai Steel Co to Rotterdam Imports.",
+        "grn_text": "Goods receipt posted for 920 tons of steel coils only. Pending balance under dispute.",
+        "invoice_text": "Invoice for 6400 tons of steel coils and steel plates ready for financing immediately.",
+    }
+
+
+def get_legitimate_baseline_invoice() -> Dict[str, Any]:
+    """Healthy invoice scenario with strong ERP and collection support."""
+    return {
+        "id": "INV-LEGIT-BASELINE",
+        "supplier": "Tech Components Inc",
+        "supplier_id": "tech_components_inc",
+        "buyer": "Global Electronics",
+        "buyer_id": "global_electronics",
+        "amount": 185_000,
+        "items": ["semiconductors", "circuit_boards"],
+        "origin": "shanghai",
+        "destination": "rotterdam",
+        "transport_mode": "sea",
+        "claimed_days": 26,
+        "quantity": 45,
+        "tier_level": 1,
+        "industry": "electronics",
+        "lender_id": "bank_main",
+        "dates": {
+            "po_date": "2024-02-01",
+            "grn_date": "2024-02-24",
+            "invoice_date": "2024-02-25",
+            "finance_request_date": "2024-02-26",
+            "delivery_date": "2024-02-24",
+            "buyer_payment_date": "2024-03-18",
+        },
+        "erp_records": {
+            "po": {
+                "id": "PO-11002",
+                "supplier_id": "tech_components_inc",
+                "buyer_id": "global_electronics",
+                "amount": 184_500,
+                "quantity": 44,
+                "items": ["semiconductors", "circuit_boards"],
+                "date": "2024-02-01",
+            },
+            "grn": {
+                "id": "GRN-11002",
+                "quantity": 44,
+                "date": "2024-02-24",
+            },
+            "delivery": {
+                "id": "POD-11002",
+                "quantity": 44,
+                "status": "completed",
+                "date": "2024-02-24",
+            },
+        },
+        "cash_flow": {
+            "expected_amount": 185_000,
+            "collected_amount": 181_500,
+            "overdue_days": 6,
+            "returns_ratio": 0.01,
+            "credit_notes_ratio": 0.0,
+        },
+        "supplier_profile": {
+            "annual_revenue": 18_000_000,
+            "monthly_revenue": 1_500_000,
+            "current_month_financed_volume": 760_000,
+            "employee_count": 120,
+            "facility_count": 3,
+        },
+        "related_invoices": [],
+        "obligation_edges": [
+            ("wafer_fab_t2", "tech_components_inc"),
+            ("tech_components_inc", "global_electronics"),
+        ],
+        "po_text": "Purchase order for semiconductors and circuit boards from Tech Components Inc.",
+        "grn_text": "Goods receipt confirms 84 units delivered and quality approved.",
+        "invoice_text": "Invoice for semiconductors and circuit boards delivered under PO-11002.",
+    }

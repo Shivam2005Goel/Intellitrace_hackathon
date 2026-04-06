@@ -56,6 +56,30 @@ def generate_explanation(violations: Dict[str, Any]) -> str:
     if graph.get("flagged"):
         cycles = graph.get("cycles_found", 0)
         parts.append(f"Detected {cycles} circular trading patterns in supply chain network.")
+
+    scf = violations.get("scf", {})
+    erp = scf.get("erp_reconciliation", {})
+    relationship_gap = scf.get("relationship_gap", {})
+    dilution = scf.get("dilution_risk", {})
+    revenue = scf.get("revenue_feasibility", {})
+    tier_velocity = scf.get("tier_velocity", {})
+    carousel = scf.get("carousel_risk", {})
+    cascade = scf.get("cascade_correlation", {})
+
+    if erp.get("flagged"):
+        parts.append("ERP evidence does not reconcile with the invoice, PO, GRN, or delivery trail.")
+    if relationship_gap.get("flagged"):
+        parts.append("Buyer-supplier relationship is weakly supported by known network topology.")
+    if dilution.get("flagged"):
+        parts.append("Collections behavior indicates dilution risk and weak cash realization.")
+    if revenue.get("flagged"):
+        parts.append("Invoice volume is inconsistent with supplier revenue capacity.")
+    if tier_velocity.get("flagged"):
+        parts.append("The same financing signal propagated unusually fast across multiple tiers.")
+    if carousel.get("flagged"):
+        parts.append("Carousel-style circular trade patterns are present in the graph.")
+    if cascade.get("flagged"):
+        parts.append("Cross-tier cascade correlation suggests repeated financing of the same economic event.")
     
     violation_text = " ".join(parts)
     
@@ -74,8 +98,8 @@ def generate_explanation(violations: Dict[str, Any]) -> str:
         llm_expl = generate_fraud_explanation(violation_text, severity)
         if llm_expl:
             return llm_expl
-    except Exception as e:
-        print(f"Gemini generation failed: {e}")
+    except Exception:
+        pass
     
     # Fallback to rule-based explanation
     return _generate_rule_explanation(violations)
@@ -141,6 +165,30 @@ def _generate_rule_explanation(violations: Dict[str, Any]) -> str:
         cycles = graph.get("cycles_found", 0)
         companies = graph.get("companies_involved", 0)
         explanations.append(f"Circular trading network: Detected {cycles} closed-loop transaction patterns involving {companies} companies.")
+
+    scf = violations.get("scf", {})
+    erp = scf.get("erp_reconciliation", {})
+    relationship_gap = scf.get("relationship_gap", {})
+    dilution = scf.get("dilution_risk", {})
+    revenue = scf.get("revenue_feasibility", {})
+    tier_velocity = scf.get("tier_velocity", {})
+    carousel = scf.get("carousel_risk", {})
+    cascade = scf.get("cascade_correlation", {})
+
+    if erp.get("flagged"):
+        explanations.append("ERP mismatch: invoice does not fully reconcile with PO, GRN, or delivery confirmation records.")
+    if relationship_gap.get("flagged"):
+        explanations.append("Relationship gap: the supplier-buyer link is not well supported by the known supply-chain topology.")
+    if dilution.get("flagged"):
+        explanations.append("Dilution alert: collections, disputes, or credit notes indicate repayment quality is deteriorating.")
+    if revenue.get("flagged"):
+        explanations.append("Feasibility breach: invoice volume is too large relative to the supplier's reported revenue base.")
+    if tier_velocity.get("flagged"):
+        explanations.append("Cascade velocity anomaly: tier-to-tier financing happened too quickly to be normal trade flow.")
+    if carousel.get("flagged"):
+        explanations.append("Carousel trade risk: graph analytics found directional trade triangles and concentrated hubs.")
+    if cascade.get("flagged"):
+        explanations.append(f"Cascade correlation: linked invoices amplify exposure by {cascade.get('financing_multiplier', 1)}x across tiers.")
     
     if not explanations:
         return "No significant fraud indicators detected. Invoice cleared for processing."

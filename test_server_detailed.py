@@ -1,49 +1,34 @@
 #!/usr/bin/env python3
 """Detailed test of Invoice Physics API."""
 import sys
+import os
 import json
-sys.path.insert(0, 'd:/Invoice_Intellitrace/backend')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
 
 from main import app
+from demo_scenarios import get_phantom_cascade_invoice
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
 print("=" * 70)
-print("INVOICE PHYSICS - DETAILED FRAUD DETECTION TEST")
+print("INTELLITRACE - DETAILED PHANTOM CASCADE TEST")
 print("=" * 70)
 
 # Test with KNOWN FRAUDULENT invoice
 print("\n[TEST] Fraudulent Invoice (Should be BLOCKED)")
 print("-" * 70)
+fraud_invoice = get_phantom_cascade_invoice()
 print("Invoice Details:")
-print("  - ID: INV-FRAUD-001")
+print(f"  - ID: {fraud_invoice['id']}")
+print("  - Typology: Phantom invoice + cross-tier cascade + dilution + carousel")
 print("  - Supplier: Shanghai Steel Co (Capacity: 500 tons/month)")
-print("  - Claimed: 8,000 tons")
+print("  - Claimed: 6,400 tons")
 print("  - Route: Shanghai -> Rotterdam by SEA")
-print("  - Claimed: 2 days (Actual: ~20 days)")
-print("  - Dates: Invoice (Jan 6) BEFORE PO (Jan 10)")
+print("  - Claimed: 2 days (Actual: ~12+ days minimum)")
+print("  - Related invoices: Tier 3 -> Tier 2 -> Tier 1 financed across 3 lenders")
+print("  - ERP mismatch: PO / GRN / delivery all under-support the invoice")
 print("-" * 70)
-
-fraud_invoice = {
-    "id": "INV-FRAUD-001",
-    "supplier": "Shanghai Steel Co",
-    "supplier_id": "shanghai_steel",
-    "buyer": "Rotterdam Imports",
-    "buyer_id": "rotterdam_imports",
-    "amount": 4700000,
-    "items": ["steel_coils"],
-    "origin": "shanghai",
-    "destination": "rotterdam",
-    "transport_mode": "sea",
-    "claimed_days": 2,
-    "quantity": 8000,
-    "dates": {
-        "po_date": "2024-01-10",
-        "invoice_date": "2024-01-06",
-        "finance_request_date": "2024-01-05"
-    }
-}
 
 response = client.post("/analyze", json=fraud_invoice)
 result = response.json()
@@ -62,6 +47,7 @@ print(f"  {result.get('explanation')}")
 # Detailed results
 results = result.get('results', {})
 physics = results.get('physics', {})
+scf = results.get('scf', {})
 
 print(f"\n  Physics Layer Details:")
 routing = physics.get('routing', {})
@@ -81,6 +67,14 @@ causality = physics.get('causality', {})
 print(f"    - Temporal Violations: {causality.get('violations', [])}")
 print(f"    - Paradox Score: {causality.get('paradox_score')}")
 print(f"    - Flagged: {causality.get('flagged')}")
+
+print(f"\n  SCF Intelligence Details:")
+print(f"    - ERP Reconciliation: {scf.get('erp_reconciliation', {}).get('verdict')}")
+print(f"    - Dilution Risk: {scf.get('dilution_risk', {}).get('verdict')}")
+print(f"    - Revenue Feasibility: {scf.get('revenue_feasibility', {}).get('verdict')}")
+print(f"    - Tier Velocity: {scf.get('tier_velocity', {}).get('verdict')}")
+print(f"    - Cascade Correlation: {scf.get('cascade_correlation', {}).get('verdict')}")
+print(f"    - Early Warning: {scf.get('early_warning', {}).get('summary')}")
 
 print("\n" + "=" * 70)
 print("TEST COMPLETE")

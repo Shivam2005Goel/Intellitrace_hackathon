@@ -8,11 +8,12 @@ import uvicorn
 
 from orchestrator import analyze_invoice_async, analyze_invoice
 from models.invoice import Invoice, AnalysisResult, Decision
+from demo_scenarios import get_phantom_cascade_invoice, get_legitimate_baseline_invoice
 
 app = FastAPI(
-    title="Invoice Physics API",
-    description="Fraud detection system that checks invoices against physical reality",
-    version="1.0.0",
+    title="IntelliTrace SCF Fraud API",
+    description="Multi-tier supply-chain finance fraud detection with ERP, graph, and cascade intelligence",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -49,6 +50,11 @@ class InvoiceRequest(BaseModel):
     invoice_text: Optional[str] = None
     obligation_edges: Optional[List[tuple]] = Field(default_factory=list)
     industry: Optional[str] = None
+    tier_level: Optional[int] = Field(default=1, ge=1, le=5)
+    erp_records: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    related_invoices: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    cash_flow: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    supplier_profile: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class BatchAnalysisRequest(BaseModel):
@@ -68,13 +74,14 @@ class HealthResponse(BaseModel):
 async def root():
     """Root endpoint with API info."""
     return {
-        "name": "Invoice Physics API",
-        "version": "1.0.0",
-        "description": "Fraud detection through physical reality verification",
+        "name": "IntelliTrace SCF Fraud API",
+        "version": "2.0.0",
+        "description": "Fraud detection through physical reality, multi-tier correlation, and SCF control-tower analytics",
         "endpoints": {
             "docs": "/docs",
             "analyze": "POST /analyze",
-            "health": "GET /health"
+            "health": "GET /health",
+            "phantom_demo": "POST /test/phantom-cascade"
         }
     }
 
@@ -108,7 +115,7 @@ async def health():
     
     return HealthResponse(
         status="healthy" if services["api"] else "degraded",
-        version="1.0.0",
+        version="2.0.0",
         timestamp=datetime.utcnow(),
         services=services
     )
@@ -210,24 +217,7 @@ async def test_fraud_detection():
     Returns expected BLOCK decision.
     """
     test_invoice = {
-        "id": "INV-FRAUD-TEST",
-        "supplier": "Shanghai Steel Co",
-        "supplier_id": "shanghai_steel",
-        "buyer": "Rotterdam Imports",
-        "buyer_id": "rotterdam_imports",
-        "amount": 4700000,
-        "items": ["steel_coils", "steel_plates"],
-        "origin": "shanghai",
-        "destination": "rotterdam",
-        "transport_mode": "sea",
-        "claimed_days": 2,
-        "quantity": 8000,
-        "dates": {
-            "po_date": "2024-01-10",
-            "invoice_date": "2024-01-06",
-            "finance_request_date": "2024-01-05"
-        },
-        "obligation_edges": []
+        **get_phantom_cascade_invoice()
     }
     
     result = await analyze_invoice_async(test_invoice)
@@ -245,27 +235,7 @@ async def test_legitimate_detection():
     Test endpoint with a legitimate invoice.
     Returns expected APPROVE decision.
     """
-    test_invoice = {
-        "id": "INV-LEGIT-TEST",
-        "supplier": "Tech Components Inc",
-        "supplier_id": "SUP003",
-        "buyer": "Global Electronics",
-        "buyer_id": "global_electronics",
-        "amount": 50000,
-        "items": ["semiconductors", "circuit_boards"],
-        "origin": "shanghai",
-        "destination": "rotterdam",
-        "transport_mode": "sea",
-        "claimed_days": 25,
-        "quantity": 100,
-        "dates": {
-            "po_date": "2024-01-01",
-            "grn_date": "2024-01-25",
-            "invoice_date": "2024-01-26",
-            "finance_request_date": "2024-01-27"
-        },
-        "obligation_edges": []
-    }
+    test_invoice = {**get_legitimate_baseline_invoice()}
     
     result = await analyze_invoice_async(test_invoice)
     return {
@@ -273,6 +243,23 @@ async def test_legitimate_detection():
         "analysis_result": result,
         "expected_decision": "APPROVE",
         "test_passed": result["decision"] == "APPROVE"
+    }
+
+
+@app.post("/test/phantom-cascade", tags=["Testing"])
+async def test_phantom_cascade():
+    """
+    End-to-end demo for the hackathon brief:
+    Tier-1 phantom invoice amplified by Tier-2 and Tier-3 financing.
+    """
+    test_invoice = get_phantom_cascade_invoice()
+    result = await analyze_invoice_async(test_invoice)
+    return {
+        "scenario": "phantom-cascade",
+        "test_invoice": test_invoice,
+        "analysis_result": result,
+        "expected_decision": "BLOCK",
+        "test_passed": result["decision"] == "BLOCK"
     }
 
 

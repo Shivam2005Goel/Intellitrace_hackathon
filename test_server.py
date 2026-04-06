@@ -7,12 +7,13 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
 
 from main import app
+from demo_scenarios import get_legitimate_baseline_invoice, get_phantom_cascade_invoice
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
 print("=" * 60)
-print("INVOICE PHYSICS - API TEST")
+print("INTELLITRACE SCF FRAUD API TEST")
 print("=" * 60)
 
 # Test 1: Health check
@@ -36,55 +37,19 @@ print(f"   Sample: {', '.join(cities.get('cities', [])[:5])}")
 
 # Test 4: Analyze fraud invoice
 print("\n4. Testing Fraud Detection...")
-fraud_invoice = {
-    "id": "INV-FRAUD-001",
-    "supplier": "Shanghai Steel Co",
-    "supplier_id": "shanghai_steel",
-    "buyer": "Rotterdam Imports",
-    "buyer_id": "rotterdam_imports",
-    "amount": 4700000,
-    "items": ["steel_coils"],
-    "origin": "shanghai",
-    "destination": "rotterdam",
-    "transport_mode": "sea",
-    "claimed_days": 2,
-    "quantity": 8000,
-    "dates": {
-        "po_date": "2024-01-10",
-        "invoice_date": "2024-01-06",
-        "finance_request_date": "2024-01-05"
-    }
-}
+fraud_invoice = get_phantom_cascade_invoice()
 response = client.post("/analyze", json=fraud_invoice)
 result = response.json()
 print(f"   Invoice: {fraud_invoice['id']}")
 print(f"   DECISION: {result.get('decision')} [WARNING]")
 print(f"   Risk Score: {result.get('risk_score')}%")
 print(f"   Layers Flagged: {', '.join(result.get('layers_flagged', []))}")
+print(f"   SCF Early Warning: {result.get('results', {}).get('scf', {}).get('early_warning', {}).get('recommended_action')}")
 print(f"   Explanation: {result.get('explanation', 'N/A')[:100]}...")
 
 # Test 5: Analyze legitimate invoice
 print("\n5. Testing Legitimate Invoice...")
-legit_invoice = {
-    "id": "INV-LEGIT-001",
-    "supplier": "Tech Components Inc",
-    "supplier_id": "SUP003",
-    "buyer": "Global Electronics",
-    "buyer_id": "global_electronics",
-    "amount": 50000,
-    "items": ["semiconductors"],
-    "origin": "shanghai",
-    "destination": "rotterdam",
-    "transport_mode": "sea",
-    "claimed_days": 25,
-    "quantity": 100,
-    "dates": {
-        "po_date": "2024-01-01",
-        "grn_date": "2024-01-25",
-        "invoice_date": "2024-01-26",
-        "finance_request_date": "2024-01-27"
-    }
-}
+legit_invoice = get_legitimate_baseline_invoice()
 response = client.post("/analyze", json=legit_invoice)
 result = response.json()
 print(f"   Invoice: {legit_invoice['id']}")

@@ -1,8 +1,8 @@
-# 🔍 Invoice Physics
+# IntelliTrace: Multi-Tier Supply Chain Fraud Detection
 
-A fraud detection system that checks invoices against physical reality before any money is released.
+A hackathon-ready SCF fraud platform that stops phantom invoices before they cascade across Tier 1 -> Tier 2 -> Tier 3 financing.
 
-> **Core Philosophy**: *"A phantom invoice is a lie about the physical world. We don't check the document — we check whether the delivery was physically possible, causally ordered, and financially consistent."*
+> **Core Philosophy**: *"A phantom invoice is not just a bad document. It is a broken trade event, a broken network relationship, and a broken financing chain."*
 
 ## System Architecture
 
@@ -30,7 +30,21 @@ A fraud detection system that checks invoices against physical reality before an
         └─────────────────┘
 ```
 
-## The 5 Layers
+## What IntelliTrace Covers
+
+The platform now maps directly to the challenge brief:
+
+1. ERP reconciliation against PO / GRN / delivery confirmations
+2. Buyer-supplier topology and relationship-gap screening
+3. Cross-lender duplicate detection using invoice fingerprints
+4. Cash collection monitoring for dilution risk
+5. Tier velocity and sequencing anomaly detection
+6. Revenue feasibility checks for phantom invoice patterns
+7. Graph analytics for carousel trades and shell rings
+8. Cross-tier cascade correlation and repeated financing multipliers
+9. Pre-disbursement early warning with lender-ready actions
+
+## The 6 Intelligence Layers
 
 | Layer | Name | What It Detects | Technology |
 |-------|------|-----------------|------------|
@@ -39,6 +53,7 @@ A fraud detection system that checks invoices against physical reality before an
 | **3** | Network Graph | Circular fraud rings, shell companies | Neo4j, NetworkX |
 | **4** | LLM Explainer | Human-readable fraud explanations | TinyLlama/Phi-2 |
 | **5** | PSI Engine | Cross-bank fraud without data sharing | Private Set Intersection |
+| **6** | SCF Control Tower | ERP mismatch, dilution, phantom cascades, carousel trades | Rule engine, graph analytics, cascade scoring |
 
 ## Quick Start
 
@@ -83,7 +98,10 @@ uvicorn main:app --reload --port 8000
 # Health check
 curl http://localhost:8000/health
 
-# Test with fraud invoice (should return BLOCK)
+# Test with the phantom cascade demo (should return BLOCK)
+curl -X POST http://localhost:8000/test/phantom-cascade
+
+# Or analyze manually
 curl -X POST http://localhost:8000/analyze \
   -H "Content-Type: application/json" \
   -d '{
@@ -117,6 +135,7 @@ curl -X POST http://localhost:8000/analyze \
 | `/cities` | GET | List supported cities |
 | `/suppliers/{id}` | GET | Get supplier network |
 | `/test/fraud` | POST | Test with known fraud |
+| `/test/phantom-cascade` | POST | Full multi-tier phantom cascade demo |
 | `/test/legitimate` | POST | Test with legitimate invoice |
 
 ## Response Format
@@ -141,6 +160,12 @@ curl -X POST http://localhost:8000/analyze \
       "causality": { ... }
     },
     "graph": { ... }
+    "scf": {
+      "erp_reconciliation": { ... },
+      "dilution_risk": { ... },
+      "cascade_correlation": { ... },
+      "early_warning": { ... }
+    }
   },
   "explanation": "This invoice shows physically impossible delivery times...",
   "processing_time_seconds": 0.234,
@@ -178,6 +203,14 @@ curl -X POST http://localhost:8000/analyze \
 - **Zero data sharing**: Only fingerprint presence revealed
 - **Multi-lender alerts**: Detects invoices at 2+ banks
 
+### Layer 6: SCF Control Tower
+- **ERP triangulation**: Checks invoice amount, quantity, items, and parties against PO / GRN / delivery feeds
+- **Dilution monitoring**: Uses collections, disputes, returns, and credit notes as repayment-quality signals
+- **Revenue feasibility**: Compares invoice and financed volume against supplier scale
+- **Tier velocity**: Detects suspiciously fast same-day or out-of-order financing hops across tiers
+- **Carousel analytics**: Flags trade triangles and concentrated hubs
+- **Cascade correlation**: Calculates financing multipliers and downstream exposure before disbursement
+
 ## Performance Targets
 
 | Metric | Target | Achieved |
@@ -212,13 +245,14 @@ LLM_MODEL_PATH=models/tinyllama/tinyllama-1.1b-chat.gguf
 
 ### Project Structure
 ```
-invoice-physics/
+intellitrace/
 ├── backend/
 │   ├── layer1_dna/          # Fingerprinting & registry
 │   ├── layer2_physics/      # Routing & capacity
 │   ├── layer3_graph/        # Neo4j & cycle detection
 │   ├── layer4_llm/          # Explanation generator
 │   ├── layer5_psi/          # Cross-lender detection
+│   ├── layer6_scf/          # ERP, dilution, and cascade intelligence
 │   ├── models/              # Pydantic models
 │   ├── main.py              # FastAPI app
 │   └── orchestrator.py      # Layer orchestration
@@ -231,6 +265,9 @@ invoice-physics/
 ### Running Tests
 
 ```bash
+# Test phantom cascade demo
+curl http://localhost:8000/test/phantom-cascade
+
 # Test fraud detection
 curl http://localhost:8000/test/fraud
 
