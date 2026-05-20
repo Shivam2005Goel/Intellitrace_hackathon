@@ -19,7 +19,7 @@ sentence-transformers>=2.2.2
 torch>=2.1.0
 
 # LLM (Optional - for explanations)
-llama-cpp-python>=0.2.0
+# llama-cpp-python>=0.2.0
 
 # HTTP Client
 requests>=2.31.0
