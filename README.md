@@ -224,9 +224,45 @@ IntelliTrace doesn't just detect fraud — it **classifies the type of fraud** u
 └────────────────────────┴──────────────────────────────────────────────────┘
 ```
 
+
+---
+
+## 📸 Screenshots
+
+### Dashboard — Hero & Value Proposition
+<p align="center">
+  <img src="frontend-next/public/img1.jpg" alt="IntelliTrace Dashboard Hero" width="100%" />
+</p>
+
+### Analyst Workbench — Invoice Submission & Live Decision
+<p align="center">
+  <img src="frontend-next/public/img2.jpg" alt="Analyst Workbench with BLOCK decision" width="100%" />
+</p>
+
+### Layer 2: Physics Validation — Physically Impossible Route Detected
+<p align="center">
+  <img src="frontend-next/public/img3.jpg" alt="Physics layer showing Shanghai to Rotterdam route impossibility" width="100%" />
+</p>
+
+### Layer 1: Invoice DNA — Duplicate Fingerprint & Cross-Lender Check
+<p align="center">
+  <img src="frontend-next/public/img4.jpg" alt="DNA layer showing duplicate invoice fingerprint" width="100%" />
+</p>
+
+### Layer 3: Network Graph — Topology Profile & Community Analysis
+<p align="center">
+  <img src="frontend-next/public/img5.jpg" alt="Network graph topology with cycle and community analysis" width="100%" />
+</p>
+
+### Analyze Page — PDF Upload & AI Risk Verdict
+<p align="center">
+  <img src="frontend-next/public/img6.jpg" alt="Analyze page with PDF upload and HOLD decision" width="100%" />
+</p>
+
 ---
 
 ## 🖥️ Analyst Workbench (Frontend)
+
 
 A **dark-mode, data-dense command center** built for fraud analysts, compliance officers, and risk managers.
 
