@@ -208,7 +208,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function AthenaResultsPage() {
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
 
-  const datasets = [...new Set(multiDatasetData.map(d => d.dataset))];
+  const datasets = Array.from(new Set(multiDatasetData.map(d => d.dataset)));
   const filteredData = selectedDataset
     ? multiDatasetData.filter(d => d.dataset === selectedDataset)
     : multiDatasetData.filter(d => d.dataset === 'Adaptive Learning');
