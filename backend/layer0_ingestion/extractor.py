@@ -2,7 +2,45 @@ import io
 import re
 import time
 from typing import Dict, Any
-import PyPDF2
+
+def _extract_text_from_pdf(file_bytes: bytes) -> str:
+    """Try pdfplumber first (best for tables/columns), fall back to PyPDF2."""
+    # Try pdfplumber first - much better at reading invoice tables
+    try:
+        import pdfplumber
+        text = ""
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+                # Also extract tables as text
+                tables = page.extract_tables()
+                for table in tables:
+                    for row in table:
+                        if row:
+                            text += " | ".join([str(cell) for cell in row if cell]) + "\n"
+        if text.strip():
+            print(f"pdfplumber extracted {len(text)} characters")
+            return text
+    except ImportError:
+        print("pdfplumber not installed, falling back to PyPDF2")
+    except Exception as e:
+        print(f"pdfplumber failed: {e}")
+
+    # Fallback to PyPDF2
+    try:
+        import PyPDF2
+        reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+        print(f"PyPDF2 extracted {len(text)} characters")
+        return text
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}"
 
 def extract_invoice_data(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     """
@@ -10,40 +48,46 @@ def extract_invoice_data(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     to map them to the InvoiceRequest schema.
     """
     text = ""
-    
+    fname_lower = filename.lower()
+
     # 1. Read the text based on file format
-    if filename.lower().endswith('.pdf'):
+    if fname_lower.endswith('.pdf'):
+        text = _extract_text_from_pdf(file_bytes)
+    elif fname_lower.endswith('.txt'):
         try:
-            reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
-            for page in reader.pages:
-                text += page.extract_text() + "\n"
-        except Exception as e:
-            text = f"Error reading PDF: {str(e)}"
+            text = file_bytes.decode('utf-8', errors='ignore')
+        except Exception:
+            text = ""
     else:
-        # Fallback for images or unknown since OCR isn't globally guaranteed
+        # Images: no OCR available, use placeholder
         text = "Shanghai Steel Co. Bill To: Rotterdam Imports Amount: $25000 Qty: 200 Origin: Shanghai Destination: Rotterdam"
-    
-    # Try Gemini Agent First!
-    try:
-        from core.agent import extract_invoice_json
-        extracted = extract_invoice_json(text)
-        if extracted:
-            invoice = extracted
-            invoice["dates"] = {
-                "po_date": invoice.pop("po_date", ""),
-                "invoice_date": invoice.pop("invoice_date", ""),
-                "finance_request_date": invoice.pop("finance_request_date", ""),
-                "grn_date": invoice.pop("grn_date", "")
-            }
-            invoice["id"] = f"INV-{int(time.time())}"
-            # Ensure safe fallback fields
-            invoice["supplier"] = invoice.get("supplier") or "Unknown Supplier"
-            invoice["buyer"] = invoice.get("buyer") or "Unknown Buyer"
-            invoice["amount"] = invoice.get("amount") or 0.0
-            return invoice
-    except Exception as e:
-        print(f"Groq Extraction Failed Setup: {e}")
-        
+
+    print(f"Extracted text preview: {text[:300]}")
+
+    # 2. Try Groq LLM for intelligent extraction
+    if text.strip() and "Error reading" not in text:
+        try:
+            from core.agent import extract_invoice_json
+            extracted = extract_invoice_json(text)
+            if extracted:
+                invoice = extracted
+                invoice["dates"] = {
+                    "po_date": invoice.pop("po_date", ""),
+                    "invoice_date": invoice.pop("invoice_date", ""),
+                    "finance_request_date": invoice.pop("finance_request_date", ""),
+                    "grn_date": invoice.pop("grn_date", "")
+                }
+                invoice["id"] = f"INV-{int(time.time())}"
+                invoice["supplier"] = invoice.get("supplier") or "Unknown Supplier"
+                invoice["buyer"] = invoice.get("buyer") or "Unknown Buyer"
+                invoice["amount"] = invoice.get("amount") or 0.0
+                print("Groq extraction successful")
+                return invoice
+        except Exception as e:
+            print(f"Groq Extraction Failed: {e}")
+
+    # 3. Fallback to rule-based parser
+    print("Falling back to rule-based parser")
     return _parse_text_to_invoice(text)
 
 def _parse_text_to_invoice(text: str) -> Dict[str, Any]:

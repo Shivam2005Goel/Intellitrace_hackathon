@@ -43,6 +43,7 @@ httpie>=3.2.0
 
 # File Upload Extraction
 PyPDF2>=3.0.0
+pdfplumber>=0.10.0
 python-multipart>=0.0.9
 
 # Gemini Agent Framework
