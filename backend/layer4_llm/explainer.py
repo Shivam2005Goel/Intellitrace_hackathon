@@ -86,7 +86,7 @@ def generate_explanation(violations: Dict[str, Any]) -> str:
     if not violation_text:
         return "No significant anomalies detected. Invoice appears consistent with normal patterns."
     
-    # Try Gemini Agent if available
+    # Try Groq Agent if available
     try:
         from core.agent import generate_fraud_explanation
         

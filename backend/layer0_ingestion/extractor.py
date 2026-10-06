@@ -42,7 +42,7 @@ def extract_invoice_data(file_bytes: bytes, filename: str) -> Dict[str, Any]:
             invoice["amount"] = invoice.get("amount") or 0.0
             return invoice
     except Exception as e:
-        print(f"Gemini Extraction Failed Setup: {e}")
+        print(f"Groq Extraction Failed Setup: {e}")
         
     return _parse_text_to_invoice(text)
 

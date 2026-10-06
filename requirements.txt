@@ -15,8 +15,8 @@ python-louvain>=0.16
 
 # Fingerprinting & Similarity
 datasketch>=1.6.0
-sentence-transformers>=2.2.2
-torch>=2.1.0
+# sentence-transformers and torch removed - too large for free tier (800MB+)
+# Code has graceful fallbacks when these are not installed
 
 # LLM (Optional - for explanations)
 # llama-cpp-python>=0.2.0
@@ -46,4 +46,4 @@ PyPDF2>=3.0.0
 python-multipart>=0.0.9
 
 # Gemini Agent Framework
-google-genai>=0.3.0
+groq>=0.11.0
