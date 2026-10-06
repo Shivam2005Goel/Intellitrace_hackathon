@@ -14,6 +14,13 @@ def get_client() -> Groq | None:
         print(f"Failed to initialize Groq Client: {e}")
         return None
 
+# Models to try in order (fallback if one fails)
+GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "gemma2-9b-it",
+    "mixtral-8x7b-32768",
+]
+
 def extract_invoice_json(raw_text: str) -> dict | None:
     """Uses Groq to read messy OCR text and strictly enforce JSON output."""
     client = get_client()
@@ -44,16 +51,19 @@ def extract_invoice_json(raw_text: str) -> dict | None:
     {raw_text}
     """
     
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        if completion.choices[0].message.content:
-            return json.loads(completion.choices[0].message.content)
-    except Exception as e:
-        print(f"Groq Extraction Error: {e}")
+    for model in GROQ_MODELS:
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            if completion.choices[0].message.content:
+                print(f"Groq extraction successful using {model}")
+                return json.loads(completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Groq Extraction Error with {model}: {e}")
+            continue
         
     return None
 
@@ -74,15 +84,17 @@ Provide a 2-3 sentence explanation of why this invoice should be held or blocked
 
 EXPLANATION:"""
 
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
-        )
-        return completion.choices[0].message.content.strip().replace("This invoice", "The invoice").replace("should be held", "is flagged for review")
-    except Exception as e:
-        print(f"Groq Explanation Error: {e}")
+    for model in GROQ_MODELS:
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+            return completion.choices[0].message.content.strip().replace("This invoice", "The invoice").replace("should be held", "is flagged for review")
+        except Exception as e:
+            print(f"Groq Explanation Error with {model}: {e}")
+            continue
         
     return None
 
