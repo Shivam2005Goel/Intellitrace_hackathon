@@ -15,10 +15,11 @@ def get_client() -> Groq | None:
         return None
 
 # Models to try in order (fallback if one fails)
+# List verified live from Groq API on 2026-10-07
 GROQ_MODELS = [
-    "llama-3.3-70b-versatile",
-    "gemma2-9b-it",
-    "mixtral-8x7b-32768",
+    "openai/gpt-oss-120b",   # 120B model - best quality
+    "openai/gpt-oss-20b",    # 20B fallback
+    "qwen/qwen3.8-27b",      # Qwen fallback
 ]
 
 def extract_invoice_json(raw_text: str) -> dict | None:
