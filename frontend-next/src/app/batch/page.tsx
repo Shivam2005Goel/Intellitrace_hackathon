@@ -65,7 +65,7 @@ export default function BatchPage() {
   const handleProcess = useCallback(async () => {
     setIsProcessing(true);
     try {
-      const parsedInvoices = [];
+      const parsedInvoices: any[] = [];
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       
       // 1. Upload and parse each file
