@@ -27,13 +27,7 @@ interface BatchResult {
   layers_flagged: string[];
 }
 
-const mockBatchResults: BatchResult[] = [
-  { id: 'INV-001', supplier: 'Shanghai Steel Co', amount: 470000, decision: 'HOLD', risk_score: 65, processing_time: 2.1, layers_flagged: ['PHYSICS'] },
-  { id: 'INV-002', supplier: 'Tech Components Inc', amount: 50000, decision: 'APPROVE', risk_score: 15, processing_time: 1.8, layers_flagged: [] },
-  { id: 'INV-003', supplier: 'Global Logistics Ltd', amount: 125000, decision: 'APPROVE', risk_score: 22, processing_time: 2.0, layers_flagged: [] },
-  { id: 'INV-004', supplier: 'Rapid Transport', amount: 89000, decision: 'BLOCK', risk_score: 88, processing_time: 2.5, layers_flagged: ['DNA', 'PHYSICS', 'GRAPH'] },
-  { id: 'INV-005', supplier: 'Mega Corp Industries', amount: 750000, decision: 'HOLD', risk_score: 58, processing_time: 2.3, layers_flagged: ['GRAPH'] },
-];
+// Removed mockBatchResults
 
 export default function BatchPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -70,10 +64,55 @@ export default function BatchPage() {
 
   const handleProcess = useCallback(async () => {
     setIsProcessing(true);
-    await new Promise(resolve => setTimeout(resolve, 4000));
-    setResults(mockBatchResults);
+    try {
+      const parsedInvoices = [];
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      
+      // 1. Upload and parse each file
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetch(`${API_URL}/analyze/upload`, {
+          method: 'POST',
+          body: formData
+        }).then(r => r.json());
+        
+        if (uploadRes.extracted) {
+           parsedInvoices.push({
+              ...uploadRes.extracted,
+              id: uploadRes.extracted.id || `INV-${Math.floor(Math.random()*10000)}`,
+              amount: uploadRes.extracted.amount || 0,
+           });
+        }
+      }
+      
+      // 2. Analyze the batch
+      if (parsedInvoices.length > 0) {
+        const batchRes = await fetch(`${API_URL}/analyze/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoices: parsedInvoices })
+        }).then(r => r.json());
+        
+        const newResults: BatchResult[] = batchRes.results.map((res: any) => ({
+           id: res.invoice_id,
+           supplier: parsedInvoices.find(i => i.id === res.invoice_id)?.supplier || 'Unknown',
+           amount: parsedInvoices.find(i => i.id === res.invoice_id)?.amount || 0,
+           decision: res.decision,
+           risk_score: res.risk_score,
+           processing_time: res.processing_time_seconds,
+           layers_flagged: res.layers_flagged || []
+        }));
+        setResults(newResults);
+      } else {
+        alert("Could not extract any data from the uploaded files.");
+      }
+    } catch (e) {
+      console.error("Batch processing failed:", e);
+      alert("Batch processing failed. Make sure the backend is running.");
+    }
     setIsProcessing(false);
-  }, []);
+  }, [files]);
 
   const filteredResults = results?.filter(r => 
     filter === 'all' || r.decision.toLowerCase() === filter

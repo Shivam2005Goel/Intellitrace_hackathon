@@ -28,50 +28,7 @@ interface Invoice {
   layer_scores: { layer: string; score: number }[];
 }
 
-const mockInvoices: Invoice[] = [
-  {
-    id: 'INV-001',
-    supplier: 'Shanghai Steel Co',
-    amount: 470000,
-    decision: 'HOLD',
-    risk_score: 65,
-    layer_scores: [
-      { layer: 'DNA', score: 2 },
-      { layer: 'Physics', score: 8 },
-      { layer: 'Graph', score: 3 },
-      { layer: 'LLM', score: 4 },
-      { layer: 'PSI', score: 1 },
-    ],
-  },
-  {
-    id: 'INV-002',
-    supplier: 'Tech Components Inc',
-    amount: 50000,
-    decision: 'APPROVE',
-    risk_score: 15,
-    layer_scores: [
-      { layer: 'DNA', score: 1 },
-      { layer: 'Physics', score: 2 },
-      { layer: 'Graph', score: 1 },
-      { layer: 'LLM', score: 1 },
-      { layer: 'PSI', score: 0 },
-    ],
-  },
-  {
-    id: 'INV-003',
-    supplier: 'Rapid Transport Ltd',
-    amount: 89000,
-    decision: 'BLOCK',
-    risk_score: 88,
-    layer_scores: [
-      { layer: 'DNA', score: 7 },
-      { layer: 'Physics', score: 9 },
-      { layer: 'Graph', score: 8 },
-      { layer: 'LLM', score: 6 },
-      { layer: 'PSI', score: 5 },
-    ],
-  },
-];
+// Removed mockInvoices
 
 const layerIcons: Record<string, React.ReactNode> = {
   DNA: <Shield className="w-4 h-4" />,
@@ -90,14 +47,61 @@ const layerColors: Record<string, string> = {
 };
 
 export default function ComparePage() {
-  const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([mockInvoices[0], mockInvoices[1]]);
+  const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const addInvoice = (invoice: Invoice) => {
-    if (selectedInvoices.length < 3) {
-      setSelectedInvoices([...selectedInvoices, invoice]);
-      setShowAddModal(false);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadRes = await fetch(`${API_URL}/analyze/upload`, {
+        method: 'POST',
+        body: formData
+      }).then(r => r.json());
+      
+      if (uploadRes.extracted) {
+         const invoiceReq = {
+            ...uploadRes.extracted,
+            id: uploadRes.extracted.id || `INV-${Math.floor(Math.random()*10000)}`,
+            amount: uploadRes.extracted.amount || 0,
+         };
+         
+         const analysisRes = await fetch(`${API_URL}/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invoiceReq)
+         }).then(r => r.json());
+         
+         const newInvoice: Invoice = {
+            id: analysisRes.invoice_id || invoiceReq.id,
+            supplier: invoiceReq.supplier || 'Unknown',
+            amount: invoiceReq.amount || 0,
+            decision: analysisRes.decision,
+            risk_score: analysisRes.risk_score,
+            layer_scores: [
+              { layer: 'DNA', score: analysisRes.layer_scores?.dna || 0 },
+              { layer: 'Physics', score: analysisRes.layer_scores?.physics || 0 },
+              { layer: 'Graph', score: analysisRes.layer_scores?.graph || 0 },
+              { layer: 'LLM', score: analysisRes.layer_scores?.llm || 0 },
+              { layer: 'PSI', score: analysisRes.layer_scores?.psi || 0 },
+            ]
+         };
+         
+         setSelectedInvoices(prev => [...prev, newInvoice]);
+         setShowAddModal(false);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to analyze uploaded invoice.");
     }
+    setIsUploading(false);
   };
 
   const removeInvoice = (index: number) => {
@@ -256,35 +260,19 @@ export default function ComparePage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 onClick={e => e.stopPropagation()}
               >
-                <h3 className="text-xl font-bold mb-4">Select Invoice to Compare</h3>
-                <div className="space-y-2">
-                  {mockInvoices.filter(inv => !selectedInvoices.find(s => s.id === inv.id)).map((invoice, i) => (
-                    <motion.button
-                      key={invoice.id}
-                      onClick={() => addInvoice(invoice)}
-                      className="w-full p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left flex items-center justify-between"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                    >
-                      <div>
-                        <p className="font-medium">{invoice.id}</p>
-                        <p className="text-sm text-white/50">{invoice.supplier}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold mono">${invoice.amount.toLocaleString()}</p>
-                        <span
-                          className="text-xs px-2 py-1 rounded-full"
-                          style={{
-                            background: `${getDecisionColor(invoice.decision)}20`,
-                            color: getDecisionColor(invoice.decision),
-                          }}
-                        >
-                          {invoice.decision}
-                        </span>
-                      </div>
-                    </motion.button>
-                  ))}
+                <h3 className="text-xl font-bold mb-4">Upload Invoice to Compare</h3>
+                <div className="space-y-4">
+                  <label className="block cursor-pointer p-8 border-2 border-dashed border-white/20 rounded-xl text-center hover:bg-white/5 transition-colors">
+                    <input type="file" accept=".pdf,.png,.jpg" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                    {isUploading ? (
+                       <p className="text-white font-medium">Analyzing document...</p>
+                    ) : (
+                       <>
+                         <Plus className="w-8 h-8 mx-auto mb-2 text-[#00f5ff]" />
+                         <p className="text-white font-medium">Click to upload PDF</p>
+                       </>
+                    )}
+                  </label>
                 </div>
               </motion.div>
             </motion.div>
