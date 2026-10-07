@@ -386,9 +386,9 @@ export default function Dashboard() {
 
         <ScenarioLauncher
           isLoading={isLoading}
-          onRunPhantomCascade={handlePhantomCascade}
-          onRunFraud={handleTestFraud}
-          onRunLegitimate={handleTestLegitimate}
+          onRunPhantomCascade={() => handlePhantomCascade(uploadedPdfData as Invoice)}
+          onRunFraud={() => handleTestFraud(uploadedPdfData as Invoice)}
+          onRunLegitimate={() => handleTestLegitimate(uploadedPdfData as Invoice)}
           onLoadDilutionScenario={() => loadScenario('Dilution stress scenario', dilutionScenario)}
           onLoadRevenueScenario={() => loadScenario('Revenue feasibility scenario', revenueScenario)}
         />
