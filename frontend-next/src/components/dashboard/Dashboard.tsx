@@ -161,6 +161,7 @@ export default function Dashboard() {
   const [apiStatus, setApiStatus] = useState<'healthy' | 'degraded' | 'offline'>('offline');
   const [error, setError] = useState<string | null>(null);
   const [formSeed, setFormSeed] = useState<Partial<Invoice> | undefined>(undefined);
+  const [uploadedPdfData, setUploadedPdfData] = useState<Partial<Invoice>>({});
   const [selectedScenarioLabel, setSelectedScenarioLabel] = useState<string>('Manual underwriting workspace');
 
   useEffect(() => {
@@ -197,28 +198,84 @@ export default function Dashboard() {
     await runAction(invoice.id || 'Custom analysis', () => analyzeInvoice(invoice));
   };
 
-  const handleTestFraud = async () => {
-    await runAction('Cross-lender duplicate demo', async () => (await testFraud()).analysis_result);
+  const handleTestFraud = async (invoice: Invoice) => {
+    // Modify uploaded invoice to trigger fraud signals
+    const fraudInvoice = {
+      ...invoice,
+      cash_flow: { ...invoice.cash_flow, overdue_days: 41, returns_ratio: 0.08, credit_notes_ratio: 0.06 },
+      erp_records: { ...invoice.erp_records, delivery: { id: `DEL-${invoice.id}-900`, quantity: 0, status: 'missing' } }
+    };
+    await runAction('Cross-lender duplicate demo', async () => analyzeInvoice(fraudInvoice));
   };
 
-  const handlePhantomCascade = async () => {
-    await runAction('Phantom cascade demo', async () => (await testPhantomCascade()).analysis_result);
+  const handlePhantomCascade = async (invoice: Invoice) => {
+    // Add related cascade chain to the uploaded invoice
+    const baseAmount = invoice.amount || 1000000;
+    const cascadeInvoice = {
+      ...invoice,
+      related_invoices: [
+        {
+          id: `${invoice.id || 'INV'}-T3`,
+          tier_level: Math.min((invoice.tier_level || 1) + 1, 3),
+          supplier_id: `${invoice.supplier_id || 'SUP'}_RAW`,
+          buyer_id: invoice.supplier_id || 'SUP_MID',
+          amount: Math.round(baseAmount * 0.64),
+          lender_id: 'bank_delta',
+        },
+        {
+          id: `${invoice.id || 'INV'}-T1`,
+          tier_level: Math.max((invoice.tier_level || 1) - 1, 1),
+          supplier_id: invoice.supplier_id || 'SUP_MID',
+          buyer_id: invoice.buyer_id || 'BUYER_TOP',
+          amount: Math.round(baseAmount * 0.98),
+          lender_id: 'bank_theta',
+        },
+      ]
+    };
+    await runAction('Phantom cascade demo', async () => analyzeInvoice(cascadeInvoice));
   };
 
-  const handleTestLegitimate = async () => {
-    await runAction('Healthy baseline demo', async () => (await testLegitimate()).analysis_result);
+  const handleTestLegitimate = async (invoice: Invoice) => {
+    // Ensure all ERP matches and cash flows are healthy
+    const legitInvoice = {
+      ...invoice,
+      erp_records: {
+        po: { amount: invoice.amount, quantity: invoice.quantity, status: 'approved' },
+        grn: { quantity: invoice.quantity, status: 'received' },
+        delivery: { quantity: invoice.quantity, status: 'confirmed' }
+      },
+      cash_flow: { expected_amount: invoice.amount, collected_amount: invoice.amount, overdue_days: 0, returns_ratio: 0, credit_notes_ratio: 0 },
+      related_invoices: []
+    };
+    await runAction('Healthy baseline demo', async () => analyzeInvoice(legitInvoice));
   };
 
-  const loadScenario = (label: string, seed: Partial<Invoice>) => {
-    setFormSeed({
-      ...seed,
-      items: [...(seed.items || [])],
-      dates: { ...(seed.dates || {}) },
-      erp_records: { ...(seed.erp_records || {}) },
-      related_invoices: [...(seed.related_invoices || [])],
-      cash_flow: { ...(seed.cash_flow || {}) },
-      supplier_profile: { ...(seed.supplier_profile || {}) },
-    });
+  const loadScenario = (label: string, scenarioOverrides: Partial<Invoice>) => {
+    // Base is either the uploaded PDF data, or empty. Never overwrite core fields if they exist in the PDF.
+    const base = uploadedPdfData;
+    
+    // We explicitly remove hardcoded supplier/amount etc from overrides if we have PDF data
+    const overrides = { ...scenarioOverrides };
+    if (base.supplier) delete overrides.supplier;
+    if (base.supplier_id) delete overrides.supplier_id;
+    if (base.buyer) delete overrides.buyer;
+    if (base.buyer_id) delete overrides.buyer_id;
+    if (base.amount) delete overrides.amount;
+    if (base.origin) delete overrides.origin;
+    if (base.destination) delete overrides.destination;
+
+    const seed = {
+      ...base,
+      ...overrides,
+      items: [...(base.items || overrides.items || [])],
+      dates: { ...(base.dates || {}), ...(overrides.dates || {}) },
+      erp_records: { ...(overrides.erp_records || {}) },
+      related_invoices: [...(overrides.related_invoices || [])],
+      cash_flow: { ...(overrides.cash_flow || {}) },
+      supplier_profile: { ...(overrides.supplier_profile || {}) },
+    };
+
+    setFormSeed(seed);
     setSelectedScenarioLabel(`${label} loaded into form`);
     setError(null);
   };
@@ -343,6 +400,7 @@ export default function Dashboard() {
               onTestFraud={handleTestFraud}
               onPhantomCascade={handlePhantomCascade}
               onTestLegitimate={handleTestLegitimate}
+              onUpload={setUploadedPdfData}
               isLoading={isLoading}
               initialData={formSeed}
             />

@@ -59,9 +59,8 @@ def extract_invoice_data(file_bytes: bytes, filename: str) -> Dict[str, Any]:
         except Exception:
             text = ""
     else:
-        # Images: no OCR available, use placeholder
-        text = "Shanghai Steel Co. Bill To: Rotterdam Imports Amount: $25000 Qty: 200 Origin: Shanghai Destination: Rotterdam"
-
+        # Images: no OCR available, do not use placeholder
+        text = ""
     print(f"Extracted text preview: {text[:300]}")
 
     # 2. Try Groq LLM for intelligent extraction
@@ -78,8 +77,8 @@ def extract_invoice_data(file_bytes: bytes, filename: str) -> Dict[str, Any]:
                     "grn_date": invoice.pop("grn_date", "")
                 }
                 invoice["id"] = f"INV-{int(time.time())}"
-                invoice["supplier"] = invoice.get("supplier") or "Unknown Supplier"
-                invoice["buyer"] = invoice.get("buyer") or "Unknown Buyer"
+                invoice["supplier"] = invoice.get("supplier") or ""
+                invoice["buyer"] = invoice.get("buyer") or ""
                 invoice["amount"] = invoice.get("amount") or 0.0
                 print("Groq extraction successful")
                 return invoice
@@ -97,17 +96,17 @@ def _parse_text_to_invoice(text: str) -> Dict[str, Any]:
     """
     invoice = {
         "id": f"INV-{int(time.time())}",
-        "supplier": "Unknown Supplier",
-        "supplier_id": "SUP999",
-        "buyer": "Unknown Buyer",
-        "buyer_id": "BUY999",
+        "supplier": "",
+        "supplier_id": "",
+        "buyer": "",
+        "buyer_id": "",
         "amount": 0.0,
-        "items": ["extracted_item"],
-        "origin": "unknown",
-        "destination": "unknown",
-        "transport_mode": "sea",
-        "claimed_days": 10.0,
-        "quantity": 1.0,
+        "items": [],
+        "origin": "",
+        "destination": "",
+        "transport_mode": "",
+        "claimed_days": 0.0,
+        "quantity": 0.0,
         "dates": {
             "po_date": "",
             "invoice_date": "",

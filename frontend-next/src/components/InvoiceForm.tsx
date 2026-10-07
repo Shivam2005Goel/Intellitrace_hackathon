@@ -25,9 +25,10 @@ import {
 
 interface InvoiceFormProps {
   onSubmit: (invoice: Invoice) => void;
-  onTestFraud?: () => void;
-  onPhantomCascade?: () => void;
-  onTestLegitimate?: () => void;
+  onTestFraud?: (invoice: Invoice) => void;
+  onPhantomCascade?: (invoice: Invoice) => void;
+  onTestLegitimate?: (invoice: Invoice) => void;
+  onUpload?: (data: Partial<Invoice>) => void;
   isLoading: boolean;
   hideUpload?: boolean;
   initialData?: Partial<Invoice>;
@@ -104,6 +105,7 @@ export default function InvoiceForm({
   onTestFraud,
   onPhantomCascade,
   onTestLegitimate,
+  onUpload,
   isLoading,
   hideUpload,
   initialData,
@@ -159,6 +161,9 @@ export default function InvoiceForm({
         }));
         if (data.items && data.items.length > 0) {
           setItemsInput(data.items.join(', '));
+        }
+        if (onUpload) {
+          onUpload(data);
         }
       }
     } catch (error) {
@@ -780,7 +785,7 @@ export default function InvoiceForm({
             <div className="grid gap-3 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={onPhantomCascade}
+                onClick={() => onPhantomCascade?.(formData)}
                 disabled={isLoading}
                 className="button-subtle text-sm disabled:opacity-60"
               >
@@ -789,7 +794,7 @@ export default function InvoiceForm({
               </button>
               <button
                 type="button"
-                onClick={onTestFraud}
+                onClick={() => onTestFraud?.(formData)}
                 disabled={isLoading}
                 className="button-subtle text-sm disabled:opacity-60"
               >
@@ -798,7 +803,7 @@ export default function InvoiceForm({
               </button>
               <button
                 type="button"
-                onClick={onTestLegitimate}
+                onClick={() => onTestLegitimate?.(formData)}
                 disabled={isLoading}
                 className="button-subtle text-sm disabled:opacity-60"
               >
